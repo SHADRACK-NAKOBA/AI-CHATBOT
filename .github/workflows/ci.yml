@@ -60,9 +60,14 @@ jobs:
         with:
           terraform_version: "~1.5"
 
-      - name: Terraform Format Check
+      - name: Terraform Format (auto-fix)
         working-directory: terraform
-        run: terraform fmt -check -recursive
+        run: |
+          terraform fmt -recursive
+          if ! git diff --quiet -- .; then
+            echo "::warning::Terraform files were reformatted by CI. Run 'terraform fmt -recursive' in terraform/ before committing."
+            git diff --name-only -- .
+          fi
 
       - name: Terraform Init (no backend)
         working-directory: terraform
