@@ -1,0 +1,102 @@
+name: CI — Security, Tests, IaC Validation
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test-and-scan:
+    name: Test & Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: ai-chatbot/lambda/package.json
+
+      - name: Install Lambda dependencies
+        working-directory: ai-chatbot/lambda
+        run: npm install
+
+      - name: npm audit (fail on high/critical CVEs)
+        working-directory: ai-chatbot/lambda
+        run: npm audit --audit-level=high
+
+      - name: Run Lambda unit tests
+        working-directory: ai-chatbot/lambda
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ENVIRONMENT: ci
+        run: npm test
+
+      - name: Snyk vulnerability scan
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high --file=ai-chatbot/lambda/package.json
+        continue-on-error: false
+
+  iac-validation:
+    name: Terraform Validate & IaC Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.5"
+
+      - name: Terraform Format Check
+        working-directory: terraform
+        run: terraform fmt -check -recursive
+
+      - name: Terraform Init (no backend)
+        working-directory: terraform
+        run: terraform init -backend=false
+
+      - name: Terraform Validate
+        working-directory: terraform
+        run: terraform validate
+
+      - name: Checkov IaC Security Scan
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: terraform/
+          framework: terraform
+          soft_fail: false
+          output_format: cli
+          download_external_modules: false
+
+  frontend-check:
+    name: Frontend Security Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check for hardcoded secrets in frontend
+        run: |
+          if grep -rE "(sk-ant-|AKIA|password\s*=|api_key\s*=)" ai-chatbot/frontend/; then
+            echo "::error::Potential secrets found in frontend files"
+            exit 1
+          fi
+          echo "No hardcoded secrets detected in frontend"
+
+      - name: Verify API URL is not hardcoded to a specific endpoint
+        run: |
+          if grep -E "execute-api\..*\.amazonaws\.com" ai-chatbot/frontend/index.html; then
+            echo "::warning::Hardcoded API Gateway URL found — should use CloudFront domain via Terraform output"
+          fi

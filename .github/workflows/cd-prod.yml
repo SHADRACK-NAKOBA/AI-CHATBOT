@@ -1,0 +1,149 @@
+name: CD — Deploy to Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type 'deploy-prod' to confirm production deployment"
+        required: true
+        type: string
+      release_notes:
+        description: "Brief description of what is being deployed"
+        required: true
+        type: string
+
+jobs:
+  gate:
+    name: Confirm deployment intent
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate confirmation string
+        run: |
+          if [ "${{ github.event.inputs.confirm }}" != "deploy-prod" ]; then
+            echo "::error::Confirmation string does not match. Type exactly: deploy-prod"
+            exit 1
+          fi
+          echo "Deployment confirmed by ${{ github.actor }}"
+
+  deploy-prod:
+    name: Deploy to Production
+    needs: gate
+    runs-on: ubuntu-latest
+    environment: production
+
+    permissions:
+      id-token: write
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION || 'us-east-1' }}
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Lambda dependencies (production only)
+        working-directory: ai-chatbot/lambda
+        run: npm install --production
+
+      - name: npm audit — final security gate
+        working-directory: ai-chatbot/lambda
+        run: npm audit --audit-level=high
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.5"
+
+      - name: Terraform Init
+        working-directory: terraform
+        run: |
+          terraform init \
+            -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" \
+            -backend-config="key=nakoba-chatbot/prod/terraform.tfstate" \
+            -backend-config="region=${{ secrets.AWS_REGION || 'us-east-1' }}" \
+            -backend-config="dynamodb_table=${{ secrets.TF_LOCK_TABLE }}"
+
+      - name: Terraform Plan
+        working-directory: terraform
+        run: terraform plan -var-file="environments/prod.tfvars" -out=prod.plan
+
+      - name: Terraform Apply
+        working-directory: terraform
+        run: terraform apply -auto-approve prod.plan
+
+      - name: Get deployment outputs
+        working-directory: terraform
+        id: tf_outputs
+        run: |
+          echo "cloudfront_domain=$(terraform output -raw cloudfront_domain)" >> $GITHUB_OUTPUT
+          echo "s3_bucket=$(terraform output -raw frontend_bucket_name)" >> $GITHUB_OUTPUT
+          echo "cloudfront_id=$(terraform output -raw cloudfront_distribution_id)" >> $GITHUB_OUTPUT
+          echo "api_url=$(terraform output -raw api_gateway_url)" >> $GITHUB_OUTPUT
+
+      - name: Deploy frontend to S3
+        run: |
+          API_URL="${{ steps.tf_outputs.outputs.api_url }}"
+          S3_BUCKET="${{ steps.tf_outputs.outputs.s3_bucket }}"
+
+          sed "s|YOUR_API_GATEWAY_URL|${API_URL}|g" \
+            ai-chatbot/frontend/index.html > /tmp/index.html
+
+          aws s3 cp /tmp/index.html s3://${S3_BUCKET}/index.html \
+            --content-type "text/html" \
+            --cache-control "max-age=3600"
+
+      - name: Invalidate CloudFront cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ steps.tf_outputs.outputs.cloudfront_id }} \
+            --paths "/*"
+
+      - name: Production smoke tests
+        run: |
+          CLOUDFRONT_DOMAIN="${{ steps.tf_outputs.outputs.cloudfront_domain }}"
+
+          echo "Waiting 45s for CloudFront propagation..."
+          sleep 45
+
+          # Health check
+          HEALTH=$(curl -sf "${CLOUDFRONT_DOMAIN}/health")
+          echo "$HEALTH" | grep -q '"status":"healthy"' || (echo "Health check failed" && exit 1)
+
+          # Chat test
+          CHAT=$(curl -sf -X POST "${CLOUDFRONT_DOMAIN}/chat" \
+            -H "Content-Type: application/json" \
+            -d '{"message":"Say OK in one word"}')
+          echo "$CHAT" | grep -q '"response"' || (echo "Chat endpoint test failed" && exit 1)
+
+          # Verify security headers present
+          HEADERS=$(curl -sI "${CLOUDFRONT_DOMAIN}/")
+          echo "$HEADERS" | grep -qi "strict-transport-security" || (echo "HSTS header missing" && exit 1)
+          echo "$HEADERS" | grep -qi "x-frame-options" || (echo "X-Frame-Options header missing" && exit 1)
+
+          echo "All production smoke tests passed"
+
+      - name: Tag release
+        run: |
+          VERSION="v$(date +'%Y.%m.%d')-$(git rev-parse --short HEAD)"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "${VERSION}" -m "Production release ${VERSION}: ${{ github.event.inputs.release_notes }}"
+          git push origin "${VERSION}"
+          echo "Tagged release: ${VERSION}"
+
+      - name: Deployment summary
+        run: |
+          echo "Production deployment complete"
+          echo "URL: ${{ steps.tf_outputs.outputs.cloudfront_domain }}"
+          echo "Deployed by: ${{ github.actor }}"
+          echo "Release notes: ${{ github.event.inputs.release_notes }}"

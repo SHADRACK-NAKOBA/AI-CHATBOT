@@ -1,0 +1,53 @@
+# ── Node / Lambda ─────────────────────────────
+ai-chatbot/lambda/node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# ── Secrets — NEVER commit these ──────────────
+.env
+.env.local
+.env.*.local
+*.env
+secrets.json
+*.pem
+*.key
+*.pfx
+
+# ── Terraform ─────────────────────────────────
+terraform/.terraform/
+terraform/*.tfplan
+terraform/*.plan
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+terraform/lambda.zip
+terraform/.terraform.lock.hcl
+terraform/override.tf
+terraform/override.tf.json
+
+# ── AWS artifacts ─────────────────────────────
+lambda.zip
+*.zip
+.aws-sam/
+cdk.out/
+.cdk.staging/
+
+# ── Build outputs ─────────────────────────────
+dist/
+build/
+out/
+
+# ── IDE & OS ──────────────────────────────────
+.vscode/settings.json
+.idea/
+*.suo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Logs ──────────────────────────────────────
+logs/
+*.log
+
+# ── Test coverage ─────────────────────────────
+coverage/
+.nyc_output/
