@@ -72,3 +72,9 @@ variable "allowed_origin" {
   type        = string
   default     = "*"
 }
+
+variable "lambda_reserved_concurrency" {
+  description = "Reserved concurrent executions for the Lambda function (-1 for unreserved)"
+  type        = number
+  default     = 100
+}

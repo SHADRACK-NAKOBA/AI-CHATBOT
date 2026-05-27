@@ -1,6 +1,8 @@
+# CKV_AWS_26: SNS topic encrypted with AWS-managed KMS key
 resource "aws_sns_topic" "alerts" {
-  name = "${local.name_prefix}-alerts"
-  tags = { Name = "${local.name_prefix}-alerts" }
+  name              = "${local.name_prefix}-alerts"
+  kms_master_key_id = "alias/aws/sns"
+  tags              = { Name = "${local.name_prefix}-alerts" }
 }
 
 resource "aws_sns_topic_subscription" "email_alerts" {

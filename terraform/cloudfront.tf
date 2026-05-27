@@ -14,9 +14,11 @@ resource "aws_cloudfront_response_headers_policy" "security" {
       referrer_policy = "strict-origin-when-cross-origin"
       override        = true
     }
+    # CKV_AWS_259: preload = true enforces HSTS preloading
     strict_transport_security {
       access_control_max_age_sec = 31536000
       include_subdomains         = true
+      preload                    = true
       override                   = true
     }
     xss_protection {
@@ -35,6 +37,11 @@ resource "aws_cloudfront_response_headers_policy" "security" {
   }
 }
 
+#checkov:skip=CKV_AWS_374:Geo restriction intentionally disabled — public AI assistant, global access required
+#checkov:skip=CKV_AWS_174:Default CloudFront certificate enforces TLS 1.2; minimum_protocol_version only configurable with ACM cert
+#checkov:skip=CKV_AWS_310:Single-region deployment by design; multi-origin failover adds cost without proportional benefit
+#checkov:skip=CKV2_AWS_42:Custom SSL certificate requires a registered domain; using CloudFront default domain
+#checkov:skip=CKV2_AWS_47:WAF already includes AWSManagedRulesKnownBadInputsRuleSet which covers Log4j (CVE-2021-44228)
 resource "aws_cloudfront_distribution" "frontend" {
   provider = aws.us_east_1
   enabled  = true
@@ -102,6 +109,13 @@ resource "aws_cloudfront_distribution" "frontend" {
     max_ttl     = 86400
 
     response_headers_policy_id = aws_cloudfront_response_headers_policy.security.id
+  }
+
+  # CKV_AWS_86: CloudFront access logging enabled
+  logging_config {
+    bucket          = aws_s3_bucket.logs.bucket_domain_name
+    prefix          = "cloudfront/"
+    include_cookies = false
   }
 
   # WAF association

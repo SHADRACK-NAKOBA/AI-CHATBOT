@@ -1,3 +1,5 @@
+#checkov:skip=CKV_AWS_338:Retention period is environment-configurable; set cloudwatch_log_retention_days=365 for compliance environments
+#checkov:skip=CKV_AWS_158:KMS encryption for Lambda operational logs not required; no sensitive data in log output
 resource "aws_cloudwatch_log_group" "lambda" {
   name              = "/aws/lambda/${local.name_prefix}"
   retention_in_days = var.cloudwatch_log_retention_days
@@ -12,16 +14,24 @@ data "archive_file" "lambda_zip" {
   excludes    = ["test.js", "*.test.js", "*.zip"]
 }
 
+#checkov:skip=CKV_AWS_117:Lambda not in VPC by design — no private data store access; WAF + Secrets Manager endpoints are public
+#checkov:skip=CKV_AWS_173:Environment variables contain no secrets; API key retrieved at runtime from Secrets Manager
+#checkov:skip=CKV_AWS_272:Code signing not required for this deployment model; integrity ensured via CI/CD pipeline and S3 source hash
 resource "aws_lambda_function" "chatbot" {
-  function_name = local.name_prefix
-  role          = aws_iam_role.lambda.arn
-  handler       = "index.handler"
-  runtime       = "nodejs20.x"
-  timeout       = var.lambda_timeout_seconds
-  memory_size   = var.lambda_memory_mb
+  function_name                  = local.name_prefix
+  role                           = aws_iam_role.lambda.arn
+  handler                        = "index.handler"
+  runtime                        = "nodejs20.x"
+  timeout                        = var.lambda_timeout_seconds
+  memory_size                    = var.lambda_memory_mb
+  reserved_concurrent_executions = var.lambda_reserved_concurrency
 
   filename         = data.archive_file.lambda_zip.output_path
   source_code_hash = data.archive_file.lambda_zip.output_base64sha256
+
+  dead_letter_config {
+    target_arn = aws_sqs_queue.lambda_dlq.arn
+  }
 
   environment {
     variables = {

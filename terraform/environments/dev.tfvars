@@ -2,6 +2,7 @@ environment                   = "dev"
 aws_region                    = "us-east-1"
 lambda_memory_mb              = 256
 lambda_timeout_seconds        = 30
+lambda_reserved_concurrency   = 50
 rate_limit_per_minute         = 200
 waf_rate_limit_per_5min       = 5000
 monthly_budget_usd            = 50

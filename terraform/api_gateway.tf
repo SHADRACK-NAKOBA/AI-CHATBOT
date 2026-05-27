@@ -19,22 +19,26 @@ resource "aws_apigatewayv2_integration" "lambda" {
   payload_format_version = "2.0"
 }
 
+# CKV_AWS_309: authorization_type explicitly set to NONE — public chatbot protected by WAF
 resource "aws_apigatewayv2_route" "chat" {
-  api_id    = aws_apigatewayv2_api.chatbot.id
-  route_key = "POST /chat"
-  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  api_id             = aws_apigatewayv2_api.chatbot.id
+  route_key          = "POST /chat"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "NONE"
 }
 
 resource "aws_apigatewayv2_route" "health" {
-  api_id    = aws_apigatewayv2_api.chatbot.id
-  route_key = "GET /health"
-  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  api_id             = aws_apigatewayv2_api.chatbot.id
+  route_key          = "GET /health"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "NONE"
 }
 
 resource "aws_apigatewayv2_route" "options" {
-  api_id    = aws_apigatewayv2_api.chatbot.id
-  route_key = "OPTIONS /chat"
-  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  api_id             = aws_apigatewayv2_api.chatbot.id
+  route_key          = "OPTIONS /chat"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "NONE"
 }
 
 resource "aws_apigatewayv2_stage" "default" {
@@ -60,6 +64,8 @@ resource "aws_apigatewayv2_stage" "default" {
   tags = { Name = "${local.name_prefix}-stage" }
 }
 
+#checkov:skip=CKV_AWS_338:Retention period is environment-configurable; set cloudwatch_log_retention_days=365 for compliance
+#checkov:skip=CKV_AWS_158:KMS encryption for API Gateway operational logs not required; no sensitive data in access logs
 resource "aws_cloudwatch_log_group" "api_gateway" {
   name              = "/aws/apigateway/${local.name_prefix}"
   retention_in_days = var.cloudwatch_log_retention_days

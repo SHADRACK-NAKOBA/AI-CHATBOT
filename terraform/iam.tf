@@ -79,6 +79,29 @@ resource "aws_iam_role_policy" "lambda_xray" {
   })
 }
 
+# SQS Dead Letter Queue for Lambda failures
+resource "aws_sqs_queue" "lambda_dlq" {
+  name                      = "${local.name_prefix}-lambda-dlq"
+  message_retention_seconds = 1209600 # 14 days
+  sqs_managed_sse_enabled   = true
+
+  tags = { Name = "${local.name_prefix}-lambda-dlq" }
+}
+
+resource "aws_iam_role_policy" "lambda_dlq" {
+  name = "${local.name_prefix}-lambda-dlq"
+  role = aws_iam_role.lambda.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["sqs:SendMessage"]
+      Resource = aws_sqs_queue.lambda_dlq.arn
+    }]
+  })
+}
+
 # CloudFront Origin Access Control for S3 (no public S3 access needed)
 resource "aws_cloudfront_origin_access_control" "frontend" {
   name                              = "${local.name_prefix}-oac"
