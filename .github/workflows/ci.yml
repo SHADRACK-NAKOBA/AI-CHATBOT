@@ -10,6 +10,8 @@ jobs:
   test-and-scan:
     name: Test & Security Scan
     runs-on: ubuntu-latest
+    env:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
     steps:
       - name: Checkout
@@ -38,12 +40,12 @@ jobs:
         run: npm test
 
       - name: Snyk vulnerability scan
+        if: ${{ env.SNYK_TOKEN != '' }}
         uses: snyk/actions/node@master
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
           args: --severity-threshold=high --file=ai-chatbot/lambda/package.json
-        continue-on-error: false
 
   iac-validation:
     name: Terraform Validate & IaC Security Scan

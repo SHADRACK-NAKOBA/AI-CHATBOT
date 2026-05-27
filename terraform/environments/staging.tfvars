@@ -1,9 +1,9 @@
-environment             = "staging"
-aws_region              = "us-east-1"
-lambda_memory_mb        = 256
-lambda_timeout_seconds  = 30
-rate_limit_per_minute   = 100
-waf_rate_limit_per_5min = 2000
-monthly_budget_usd      = 100
+environment                   = "staging"
+aws_region                    = "us-east-1"
+lambda_memory_mb              = 256
+lambda_timeout_seconds        = 30
+rate_limit_per_minute         = 100
+waf_rate_limit_per_5min       = 2000
+monthly_budget_usd            = 100
 cloudwatch_log_retention_days = 60
-allowed_origin          = "*"
+allowed_origin                = "*"

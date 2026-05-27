@@ -24,7 +24,7 @@ resource "aws_dynamodb_table" "rate_limits" {
   deletion_protection_enabled = var.environment == "prod"
 
   tags = {
-    Name = "${local.name_prefix}-rate-limits"
+    Name    = "${local.name_prefix}-rate-limits"
     Purpose = "rate-limiting"
   }
 }
