@@ -2,6 +2,8 @@
 
 ## CloudWatch Dashboard: Nakoba AI Chatbot
 
+> **Note:** this dashboard is a design for you to build (CloudWatch → Dashboards → Create dashboard). The Terraform in this repo creates the log groups, alarms, SNS topic and budget, not the dashboard.
+
 The dashboard `nakoba-chatbot-prod` contains 8 widgets:
 
 ```

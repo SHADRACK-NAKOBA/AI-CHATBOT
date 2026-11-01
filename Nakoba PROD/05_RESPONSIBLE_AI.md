@@ -102,7 +102,7 @@ You must never:
 
 | Parameter | Value | Rationale |
 |-----------|-------|-----------|
-| Model | `claude-sonnet-4-20250514` | Balanced capability and safety |
+| Model | `claude-sonnet-5-5` | Balanced capability and safety |
 | Max tokens | 1024 | Prevents runaway costs, adequate for chat |
 | Temperature | Default (1.0) | Standard creative range |
 | Conversation history | Last 20 messages | Bounded context, cost control |
@@ -128,7 +128,7 @@ Every AI interaction produces an immutable audit record in CloudWatch Logs:
     "promptInjectionAttempt": false,
     "systemPromptIntact": true
   },
-  "model": "claude-sonnet-4-20250514",
+  "model": "claude-sonnet-5-5",
   "inputTokens": 318,
   "outputTokens": 97,
   "durationMs": 1243

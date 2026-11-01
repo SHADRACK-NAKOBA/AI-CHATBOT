@@ -49,19 +49,16 @@ aws lambda get-function --function-name nakoba-chatbot-prod
 
 **Step 3 — Rollback**
 ```bash
-# Get list of Lambda versions
-aws lambda list-versions-by-function --function-name nakoba-chatbot-prod
-
-# Roll back to previous version
-aws lambda update-alias \
-  --function-name nakoba-chatbot-prod \
-  --name LIVE \
-  --function-version [PREVIOUS_VERSION]
+# This project deploys Lambda as $LATEST (no versions/aliases are published).
+# Roll back by redeploying the last good commit:
+git log --oneline -5                      # find the last good commit
+git revert --no-edit <BAD_COMMIT_SHA>     # or: git checkout <GOOD_SHA> -- ai-chatbot/lambda
+./scripts/deploy.sh prod                  # rebuilds the zip and re-applies Terraform
 ```
 
 **Step 4 — Confirm Recovery**
 ```bash
-curl -X POST https://[CLOUDFRONT_DOMAIN]/chat \
+curl -X POST $(terraform -chdir=terraform output -raw cloudfront_domain)/chat \
   -H "Content-Type: application/json" \
   -d '{"message": "Health check"}'
 ```

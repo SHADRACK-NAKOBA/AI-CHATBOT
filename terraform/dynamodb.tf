@@ -1,5 +1,5 @@
-#checkov:skip=CKV_AWS_119:AWS-managed SSE is sufficient for ephemeral rate-limit data; CMK adds cost without compliance benefit
 resource "aws_dynamodb_table" "rate_limits" {
+  #checkov:skip=CKV_AWS_119:AWS-managed SSE is sufficient for ephemeral rate-limit data; CMK adds cost without compliance benefit
   name         = "${local.name_prefix}-rate-limits"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "pk"

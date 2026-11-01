@@ -17,10 +17,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js 20
+      - name: Setup Node.js 24
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
           cache: "npm"
           cache-dependency-path: ai-chatbot/lambda/package.json
 
@@ -32,10 +32,9 @@ jobs:
         working-directory: ai-chatbot/lambda
         run: npm audit --audit-level=high
 
-      - name: Run Lambda unit tests
+      - name: Run Lambda unit tests (offline - no API key or AWS needed)
         working-directory: ai-chatbot/lambda
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           ENVIRONMENT: ci
         run: npm test
 

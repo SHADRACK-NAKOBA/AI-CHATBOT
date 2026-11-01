@@ -10,7 +10,7 @@ Developer Push
 │           CI Pipeline (ci.yml)              │
 │  Triggers on: every push + PR               │
 │                                             │
-│  1. Checkout + Setup Node.js 20             │
+│  1. Checkout + Setup Node.js 24             │
 │  2. npm install                             │
 │  3. npm audit (fail on high severity)       │
 │  4. npm test (unit tests)                  │
@@ -152,20 +152,19 @@ Configure in: GitHub → Settings → Environments
 ## Rollback Procedure
 
 ### Automatic Rollback (Lambda)
-Lambda supports traffic shifting and rollback via aliases:
 ```bash
-# Roll back to previous Lambda version
-aws lambda update-alias \
-  --function-name nakoba-chatbot-prod \
-  --name LIVE \
-  --function-version $PREVIOUS_VERSION
+# This project deploys Lambda as $LATEST (no versions/aliases are published).
+# Roll back by redeploying the last good commit:
+git log --oneline -5                      # find the last good commit
+git revert --no-edit <BAD_COMMIT_SHA>     # or: git checkout <GOOD_SHA> -- ai-chatbot/lambda
+./scripts/deploy.sh prod                  # rebuilds the zip and re-applies Terraform
 ```
 
 ### Terraform Rollback
 ```bash
 # Restore previous Terraform state
 aws s3 cp \
-  s3://nakoba-terraform-state/nakoba-chatbot/prod/terraform.tfstate.backup \
+  s3://nakoba-terraform-state-${ACCOUNT_ID}/nakoba-chatbot/prod/terraform.tfstate.backup \
   terraform.tfstate
 
 terraform apply -var-file="environments/prod.tfvars"
@@ -174,9 +173,10 @@ terraform apply -var-file="environments/prod.tfvars"
 ### Frontend Rollback
 ```bash
 # S3 versioning enables instant rollback
-aws s3api list-object-versions --bucket nakoba-frontend-prod --prefix index.html
-aws s3api restore-object --bucket nakoba-frontend-prod \
-  --key index.html --version-id [PREVIOUS_VERSION_ID]
+FRONTEND_BUCKET=$(terraform -chdir=terraform output -raw frontend_bucket_name)
+aws s3api list-object-versions --bucket ${FRONTEND_BUCKET} --prefix index.html
+aws s3api copy-object --bucket ${FRONTEND_BUCKET} --key index.html \
+  --copy-source "${FRONTEND_BUCKET}/index.html?versionId=<PREVIOUS_VERSION_ID>"
 ```
 
 ---

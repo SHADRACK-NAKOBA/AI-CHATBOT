@@ -10,7 +10,7 @@ const dynamo = new DynamoDBClient({ region: process.env.AWS_REGION || "us-east-1
 
 function hashIp(ip) {
   const crypto = require("crypto");
-  return crypto.createHash("sha256").update(ip + process.env.RATE_LIMIT_SALT || "nakoba").digest("hex").slice(0, 16);
+  return crypto.createHash("sha256").update(ip + (process.env.RATE_LIMIT_SALT || "nakoba")).digest("hex").slice(0, 16);
 }
 
 function getClientIp(event) {

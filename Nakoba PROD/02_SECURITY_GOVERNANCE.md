@@ -181,7 +181,7 @@ Every API request produces a structured JSON log entry:
   "outcome": "success",
   "inputLength": 142,
   "outputLength": 387,
-  "model": "claude-sonnet-4-20250514",
+  "model": "claude-sonnet-5-5",
   "tokensUsed": {
     "input": 318,
     "output": 97

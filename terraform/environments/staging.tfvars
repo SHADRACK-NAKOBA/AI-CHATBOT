@@ -1,8 +1,9 @@
 environment                   = "staging"
+owner_email                   = "CHANGE_ME@example.com" # <-- REQUIRED: put YOUR email here (alarms + budget alerts)
 aws_region                    = "us-east-1"
 lambda_memory_mb              = 256
 lambda_timeout_seconds        = 30
-lambda_reserved_concurrency   = 100
+lambda_reserved_concurrency   = -1 # -1 = unreserved. Raise (e.g. 50) only after checking Service Quotas > Lambda > Concurrent executions
 rate_limit_per_minute         = 100
 waf_rate_limit_per_5min       = 2000
 monthly_budget_usd            = 100

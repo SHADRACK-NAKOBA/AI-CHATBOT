@@ -21,6 +21,7 @@ resource "aws_apigatewayv2_integration" "lambda" {
 
 # CKV_AWS_309: authorization_type explicitly set to NONE — public chatbot protected by WAF
 resource "aws_apigatewayv2_route" "chat" {
+  #checkov:skip=CKV_AWS_309:Public chatbot endpoint by design; protected by CloudFront + WAF + rate limiting
   api_id             = aws_apigatewayv2_api.chatbot.id
   route_key          = "POST /chat"
   target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
@@ -28,6 +29,7 @@ resource "aws_apigatewayv2_route" "chat" {
 }
 
 resource "aws_apigatewayv2_route" "health" {
+  #checkov:skip=CKV_AWS_309:Public chatbot endpoint by design; protected by CloudFront + WAF + rate limiting
   api_id             = aws_apigatewayv2_api.chatbot.id
   route_key          = "GET /health"
   target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
@@ -35,6 +37,7 @@ resource "aws_apigatewayv2_route" "health" {
 }
 
 resource "aws_apigatewayv2_route" "options" {
+  #checkov:skip=CKV_AWS_309:Public chatbot endpoint by design; protected by CloudFront + WAF + rate limiting
   api_id             = aws_apigatewayv2_api.chatbot.id
   route_key          = "OPTIONS /chat"
   target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
@@ -48,7 +51,7 @@ resource "aws_apigatewayv2_stage" "default" {
 
   access_log_settings {
     destination_arn = aws_cloudwatch_log_group.api_gateway.arn
-    format          = jsonencode({
+    format = jsonencode({
       requestId        = "$context.requestId"
       ip               = "$context.identity.sourceIp"
       requestTime      = "$context.requestTime"
@@ -64,9 +67,9 @@ resource "aws_apigatewayv2_stage" "default" {
   tags = { Name = "${local.name_prefix}-stage" }
 }
 
-#checkov:skip=CKV_AWS_338:Retention period is environment-configurable; set cloudwatch_log_retention_days=365 for compliance
-#checkov:skip=CKV_AWS_158:KMS encryption for API Gateway operational logs not required; no sensitive data in access logs
 resource "aws_cloudwatch_log_group" "api_gateway" {
+  #checkov:skip=CKV_AWS_338:Retention period is environment-configurable; set cloudwatch_log_retention_days=365 for compliance
+  #checkov:skip=CKV_AWS_158:KMS encryption for API Gateway operational logs not required; no sensitive data in access logs
   name              = "/aws/apigateway/${local.name_prefix}"
   retention_in_days = var.cloudwatch_log_retention_days
 }

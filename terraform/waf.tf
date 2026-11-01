@@ -134,9 +134,9 @@ resource "aws_wafv2_web_acl" "chatbot" {
 }
 
 # WAF log group — name MUST start with "aws-waf-logs-" per AWS requirement
-#checkov:skip=CKV_AWS_338:Retention period is environment-configurable; set cloudwatch_log_retention_days=365 for compliance
-#checkov:skip=CKV_AWS_158:KMS encryption for WAF operational logs not required; no sensitive data in WAF access logs
 resource "aws_cloudwatch_log_group" "waf" {
+  #checkov:skip=CKV_AWS_338:Retention period is environment-configurable; set cloudwatch_log_retention_days=365 for compliance
+  #checkov:skip=CKV_AWS_158:KMS encryption for WAF operational logs not required; no sensitive data in WAF access logs
   provider          = aws.us_east_1
   name              = "aws-waf-logs-${local.name_prefix}"
   retention_in_days = var.cloudwatch_log_retention_days

@@ -37,12 +37,12 @@ resource "aws_cloudfront_response_headers_policy" "security" {
   }
 }
 
-#checkov:skip=CKV_AWS_374:Geo restriction intentionally disabled — public AI assistant, global access required
-#checkov:skip=CKV_AWS_174:Default CloudFront certificate enforces TLS 1.2; minimum_protocol_version only configurable with ACM cert
-#checkov:skip=CKV_AWS_310:Single-region deployment by design; multi-origin failover adds cost without proportional benefit
-#checkov:skip=CKV2_AWS_42:Custom SSL certificate requires a registered domain; using CloudFront default domain
-#checkov:skip=CKV2_AWS_47:WAF already includes AWSManagedRulesKnownBadInputsRuleSet which covers Log4j (CVE-2021-44228)
 resource "aws_cloudfront_distribution" "frontend" {
+  #checkov:skip=CKV_AWS_374:Geo restriction intentionally disabled — public AI assistant, global access required
+  #checkov:skip=CKV_AWS_174:Default CloudFront certificate enforces TLS 1.2; minimum_protocol_version only configurable with ACM cert
+  #checkov:skip=CKV_AWS_310:Single-region deployment by design; multi-origin failover adds cost without proportional benefit
+  #checkov:skip=CKV2_AWS_42:Custom SSL certificate requires a registered domain; using CloudFront default domain
+  #checkov:skip=CKV2_AWS_47:WAF already includes AWSManagedRulesKnownBadInputsRuleSet which covers Log4j (CVE-2021-44228)
   provider = aws.us_east_1
   enabled  = true
   comment  = "${local.name_prefix} — ${var.environment}"
@@ -71,23 +71,25 @@ resource "aws_cloudfront_distribution" "frontend" {
 
   # API routes forwarded to API Gateway
   ordered_cache_behavior {
-    path_pattern           = "/chat"
-    allowed_methods        = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-    cached_methods         = ["GET", "HEAD"]
-    target_origin_id       = "api-gateway"
-    viewer_protocol_policy = "redirect-to-https"
-    cache_policy_id        = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad" # CachingDisabled
+    path_pattern             = "/chat"
+    allowed_methods          = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    cached_methods           = ["GET", "HEAD"]
+    target_origin_id         = "api-gateway"
+    viewer_protocol_policy   = "redirect-to-https"
+    cache_policy_id          = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad" # CachingDisabled
+    origin_request_policy_id = "b689b0a8-53d0-40ab-baf2-68738e2966ac" # Managed-AllViewerExceptHostHeader (recommended for API Gateway origins)
 
     response_headers_policy_id = aws_cloudfront_response_headers_policy.security.id
   }
 
   ordered_cache_behavior {
-    path_pattern           = "/health"
-    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
-    cached_methods         = ["GET", "HEAD"]
-    target_origin_id       = "api-gateway"
-    viewer_protocol_policy = "redirect-to-https"
-    cache_policy_id        = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad" # CachingDisabled
+    path_pattern             = "/health"
+    allowed_methods          = ["GET", "HEAD", "OPTIONS"]
+    cached_methods           = ["GET", "HEAD"]
+    target_origin_id         = "api-gateway"
+    viewer_protocol_policy   = "redirect-to-https"
+    cache_policy_id          = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad" # CachingDisabled
+    origin_request_policy_id = "b689b0a8-53d0-40ab-baf2-68738e2966ac" # Managed-AllViewerExceptHostHeader (recommended for API Gateway origins)
 
     response_headers_policy_id = aws_cloudfront_response_headers_policy.security.id
   }
@@ -134,5 +136,5 @@ resource "aws_cloudfront_distribution" "frontend" {
 
   tags = { Name = "${local.name_prefix}-distribution" }
 
-  depends_on = [aws_wafv2_web_acl.chatbot]
+  depends_on = [aws_wafv2_web_acl.chatbot, aws_s3_bucket_ownership_controls.logs]
 }

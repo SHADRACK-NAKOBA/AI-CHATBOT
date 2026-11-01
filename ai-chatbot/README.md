@@ -19,7 +19,7 @@ Amazon S3 (Static Website)
 Amazon API Gateway (HTTP API)
     │
     ▼
-AWS Lambda (Node.js 20.x)
+AWS Lambda (Node.js 24.x)
     │
     ▼
 Anthropic Claude API
@@ -134,7 +134,7 @@ To remove all AWS resources:
 | Frontend | HTML5, CSS3, Vanilla JS |
 | Hosting | Amazon S3 Static Website |
 | API Layer | Amazon API Gateway (HTTP API) |
-| Compute | AWS Lambda (Node.js 20.x) |
+| Compute | AWS Lambda (Node.js 24.x) |
 | AI Model | Anthropic Claude (claude-sonnet-4) |
 
 ---

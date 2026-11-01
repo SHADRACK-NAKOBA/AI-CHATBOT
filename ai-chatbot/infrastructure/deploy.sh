@@ -1,4 +1,5 @@
 #!/bin/bash
+# LEGACY — do not use for the lab. Use ./scripts/deploy.sh and ./scripts/destroy.sh (Terraform) instead.
 # deploy.sh — Deploy AI Chatbot to AWS
 # Usage: ./infrastructure/deploy.sh
 # Requirements: AWS CLI configured, Node.js installed

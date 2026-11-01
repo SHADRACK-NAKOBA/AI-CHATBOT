@@ -34,7 +34,7 @@
                                                                   │ IAM Auth
                                                    ┌─────────────▼──────────┐
                                                    │   AWS Lambda Function   │
-                                                   │   Node.js 20.x          │
+                                                   │   Node.js 24.x          │
                                                    │                         │
                                                    │  ┌─────────────────┐   │
                                                    │  │ Rate Limiter    │   │

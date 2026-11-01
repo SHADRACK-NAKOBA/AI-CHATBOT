@@ -14,7 +14,7 @@ You are an expert AI Engineer helping me build and maintain a serverless AI chat
 This is a production-ready AI chatbot with the following architecture:
 - **Frontend**: HTML/CSS/JS static site hosted on Amazon S3
 - **API Layer**: Amazon API Gateway (HTTP API with CORS)
-- **Compute**: AWS Lambda (Node.js 20.x)
+- **Compute**: AWS Lambda (Node.js 24.x)
 - **AI Model**: Anthropic Claude via the @anthropic-ai/sdk
 
 ## Project Structure
@@ -29,7 +29,7 @@ ai-chatbot/
 └── README.md
 
 ## My Stack & Constraints
-- AWS Lambda Node.js 20.x runtime
+- AWS Lambda Node.js 24.x runtime
 - Anthropic SDK: @anthropic-ai/sdk
 - No frameworks (plain HTML/CSS/JS for frontend)
 - AWS CLI for deployment (no CDK or Terraform)

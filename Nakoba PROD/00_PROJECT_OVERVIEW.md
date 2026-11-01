@@ -117,8 +117,8 @@ This enterprise production environment transforms the base AI chatbot into a sec
 | CDN | AWS CloudFront | Global edge, HTTPS enforced, WAF integration |
 | API | AWS API Gateway HTTP | Low latency, auto-scaling, IAM-ready |
 | Security | AWS WAF v2 | Managed threat rules, rate limiting |
-| Compute | AWS Lambda (Node.js 20.x) | Serverless, scales to zero, no idle cost |
-| AI Model | Anthropic Claude Sonnet 4 | State-of-the-art, safety-trained |
+| Compute | AWS Lambda (Node.js 24.x) | Serverless, scales to zero, no idle cost |
+| AI Model | Anthropic Claude Sonnet 5.5 | State-of-the-art, safety-trained |
 | Secrets | AWS Secrets Manager | Encrypted, rotatable, no secrets in code |
 | Rate Limiting | DynamoDB (TTL) | Low-latency, serverless, auto-expire |
 | Logging | CloudWatch Logs + Insights | Centralized, queryable, archivable |

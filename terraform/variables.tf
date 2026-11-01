@@ -20,9 +20,18 @@ variable "project_name" {
 }
 
 variable "owner_email" {
-  description = "Owner email for billing alerts and alarms"
+  description = "YOUR email for billing alerts and alarms (set it in environments/<env>.tfvars)"
   type        = string
-  default     = "shadrack.n159@gmail.com"
+  validation {
+    condition     = can(regex("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$", var.owner_email)) && !can(regex("(?i)change_me|example\\.com", var.owner_email))
+    error_message = "Set owner_email to YOUR real email address in environments/<env>.tfvars (alerts and budget emails go there)."
+  }
+}
+
+variable "anthropic_model" {
+  description = "Claude model ID used by the Lambda. Check current IDs: https://docs.claude.com/en/docs/about-claude/models/overview"
+  type        = string
+  default     = "claude-sonnet-5-5"
 }
 
 variable "anthropic_secret_name" {
@@ -74,7 +83,7 @@ variable "allowed_origin" {
 }
 
 variable "lambda_reserved_concurrency" {
-  description = "Reserved concurrent executions for the Lambda function (-1 for unreserved)"
+  description = "Reserved concurrent executions for the Lambda (-1 = unreserved). New AWS accounts often have a total limit of 10, so keep -1 unless your quota is higher."
   type        = number
-  default     = 100
+  default     = -1
 }

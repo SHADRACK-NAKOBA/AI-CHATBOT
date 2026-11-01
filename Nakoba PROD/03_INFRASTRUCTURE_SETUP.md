@@ -56,19 +56,23 @@ The person running Terraform needs these AWS permissions:
 
 Terraform state must be stored remotely and encrypted. Run this ONCE before `terraform init`:
 
+> **Shortcut:** `./scripts/bootstrap.sh` runs Steps 2 and 3 for you.
+
 ```bash
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+
 # Create S3 bucket for Terraform state
-aws s3 mb s3://nakoba-terraform-state-$(aws sts get-caller-identity --query Account --output text) \
+aws s3 mb s3://nakoba-terraform-state-${ACCOUNT_ID} \
   --region us-east-1
 
 # Enable versioning
 aws s3api put-bucket-versioning \
-  --bucket nakoba-terraform-state-[ACCOUNT_ID] \
+  --bucket nakoba-terraform-state-${ACCOUNT_ID} \
   --versioning-configuration Status=Enabled
 
 # Enable encryption
 aws s3api put-bucket-encryption \
-  --bucket nakoba-terraform-state-[ACCOUNT_ID] \
+  --bucket nakoba-terraform-state-${ACCOUNT_ID} \
   --server-side-encryption-configuration '{
     "Rules": [{"ApplyServerSideEncryptionByDefault": {"SSEAlgorithm": "AES256"}}]
   }'
@@ -107,7 +111,8 @@ In your GitHub repository → Settings → Secrets and Variables → Actions, ad
 | `AWS_ACCESS_KEY_ID` | Terraform operator access key |
 | `AWS_SECRET_ACCESS_KEY` | Terraform operator secret key |
 | `AWS_REGION` | `us-east-1` |
-| `ANTHROPIC_API_KEY` | Your Anthropic API key (for CI test only) |
+| `TF_STATE_BUCKET` | `nakoba-terraform-state-<ACCOUNT_ID>` |
+| `TF_LOCK_TABLE` | `nakoba-terraform-locks` |
 | `SNYK_TOKEN` | Your Snyk API token (for security scanning) |
 
 ---
@@ -121,7 +126,7 @@ cd terraform/
 
 # Initialize with remote backend (update bucket name)
 terraform init \
-  -backend-config="bucket=nakoba-terraform-state-[ACCOUNT_ID]" \
+  -backend-config="bucket=nakoba-terraform-state-${ACCOUNT_ID}" \
   -backend-config="key=nakoba-chatbot/prod/terraform.tfstate" \
   -backend-config="region=us-east-1" \
   -backend-config="dynamodb_table=nakoba-terraform-locks"
@@ -195,25 +200,13 @@ aws lambda update-function-code \
 
 ## Step 7 — Deploy Frontend
 
+`terraform apply` uploads `ai-chatbot/frontend/index.html` to S3 automatically (resource `aws_s3_object.index`).
+The page calls `/chat` on the same CloudFront domain, so traffic always goes through the WAF — no URL injection is needed.
+After changing the HTML, run `terraform apply` again and clear the CloudFront cache:
+
 ```bash
-# Get CloudFront domain from Terraform outputs
-CLOUDFRONT_DOMAIN=$(cd terraform && terraform output -raw cloudfront_domain)
-S3_BUCKET=$(cd terraform && terraform output -raw frontend_bucket_name)
-
-# Inject API Gateway URL into frontend
-API_URL=$(cd terraform && terraform output -raw api_gateway_url)
-sed -i "s|YOUR_API_GATEWAY_URL|${API_URL}|g" ai-chatbot/frontend/index.html
-
-# Upload to S3
-aws s3 cp ai-chatbot/frontend/index.html s3://${S3_BUCKET}/index.html \
-  --content-type "text/html" \
-  --cache-control "max-age=3600"
-
-# Invalidate CloudFront cache
-DISTRIBUTION_ID=$(cd terraform && terraform output -raw cloudfront_distribution_id)
-aws cloudfront create-invalidation \
-  --distribution-id ${DISTRIBUTION_ID} \
-  --paths "/*"
+DIST_ID=$(terraform -chdir=terraform output -raw cloudfront_distribution_id)
+aws cloudfront create-invalidation --distribution-id ${DIST_ID} --paths "/*"
 ```
 
 ---
@@ -222,10 +215,11 @@ aws cloudfront create-invalidation \
 
 ```bash
 # Test health endpoint
-curl https://${CLOUDFRONT_DOMAIN}/health
+APP_URL=$(terraform -chdir=terraform output -raw cloudfront_domain)   # already starts with https://
+curl ${APP_URL}/health
 
 # Test chat endpoint
-curl -X POST https://${CLOUDFRONT_DOMAIN}/chat \
+curl -X POST ${APP_URL}/chat \
   -H "Content-Type: application/json" \
   -d '{"message": "Hello, are you working?"}'
 ```

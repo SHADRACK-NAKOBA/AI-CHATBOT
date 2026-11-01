@@ -15,6 +15,7 @@ on:
 jobs:
   gate:
     name: Confirm deployment intent
+    if: ${{ vars.ENABLE_CD == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Validate confirmation string
@@ -46,14 +47,14 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION || 'us-east-1' }}
 
-      - name: Setup Node.js 20
+      - name: Setup Node.js 24
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
 
       - name: Install Lambda dependencies (production only)
         working-directory: ai-chatbot/lambda
-        run: npm install --production
+        run: npm install --omit=dev
 
       - name: npm audit — final security gate
         working-directory: ai-chatbot/lambda
@@ -89,18 +90,6 @@ jobs:
           echo "s3_bucket=$(terraform output -raw frontend_bucket_name)" >> $GITHUB_OUTPUT
           echo "cloudfront_id=$(terraform output -raw cloudfront_distribution_id)" >> $GITHUB_OUTPUT
           echo "api_url=$(terraform output -raw api_gateway_url)" >> $GITHUB_OUTPUT
-
-      - name: Deploy frontend to S3
-        run: |
-          API_URL="${{ steps.tf_outputs.outputs.api_url }}"
-          S3_BUCKET="${{ steps.tf_outputs.outputs.s3_bucket }}"
-
-          sed "s|YOUR_API_GATEWAY_URL|${API_URL}|g" \
-            ai-chatbot/frontend/index.html > /tmp/index.html
-
-          aws s3 cp /tmp/index.html s3://${S3_BUCKET}/index.html \
-            --content-type "text/html" \
-            --cache-control "max-age=3600"
 
       - name: Invalidate CloudFront cache
         run: |

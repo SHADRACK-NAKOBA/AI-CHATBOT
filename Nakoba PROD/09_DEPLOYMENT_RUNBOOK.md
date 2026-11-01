@@ -45,32 +45,32 @@ Open in parallel:
 
 ```bash
 # Set variables
-CLOUDFRONT_DOMAIN=$(terraform output -raw cloudfront_domain -chdir=terraform)
+APP_URL=$(terraform -chdir=terraform output -raw cloudfront_domain)   # already includes https://
 
 # Test 1: Health check
-curl -sf https://${CLOUDFRONT_DOMAIN}/health | jq .
+curl -sf ${APP_URL}/health | jq .
 # Expected: {"status": "healthy", ...}
 
 # Test 2: Chat endpoint
-curl -sf -X POST https://${CLOUDFRONT_DOMAIN}/chat \
+curl -sf -X POST ${APP_URL}/chat \
   -H "Content-Type: application/json" \
   -d '{"message": "Say hello in one sentence"}' | jq .response
 # Expected: A short greeting message
 
 # Test 3: Rate limit header present
-curl -I https://${CLOUDFRONT_DOMAIN}/chat \
+curl -I ${APP_URL}/chat \
   -X POST -H "Content-Type: application/json" \
   -d '{"message": "test"}' | grep -i x-ratelimit
 # Expected: x-ratelimit-remaining header present
 
 # Test 4: Invalid input rejected
-curl -sf -X POST https://${CLOUDFRONT_DOMAIN}/chat \
+curl -sf -X POST ${APP_URL}/chat \
   -H "Content-Type: application/json" \
   -d '{"notmessage": "test"}' 
 # Expected: 400 status code
 
 # Test 5: CORS correctly set
-curl -I https://${CLOUDFRONT_DOMAIN}/chat \
+curl -I ${APP_URL}/chat \
   -X OPTIONS \
   -H "Origin: https://malicious.com"
 # Expected: No Access-Control-Allow-Origin header (or different origin)
@@ -104,28 +104,20 @@ If any smoke test fails or alarms fire within 30 minutes of deployment:
 ### Lambda Rollback (< 2 minutes)
 
 ```bash
-# List Lambda versions
-aws lambda list-versions-by-function \
-  --function-name nakoba-chatbot-prod \
-  --query 'Versions[-2].Version' \
-  --output text
-
-# Roll back
-PREV_VERSION=[number from above]
-aws lambda update-alias \
-  --function-name nakoba-chatbot-prod \
-  --name LIVE \
-  --function-version ${PREV_VERSION}
-
-echo "Lambda rolled back to version ${PREV_VERSION}"
+# This project deploys Lambda as $LATEST (no versions/aliases are published).
+# Roll back by redeploying the last good commit:
+git log --oneline -5                      # find the last good commit
+git revert --no-edit <BAD_COMMIT_SHA>     # or: git checkout <GOOD_SHA> -- ai-chatbot/lambda
+./scripts/deploy.sh prod                  # rebuilds the zip and re-applies Terraform
 ```
 
 ### Frontend Rollback (< 2 minutes)
 
 ```bash
 # S3 versioning is enabled — restore previous version
+FRONTEND_BUCKET=$(terraform -chdir=terraform output -raw frontend_bucket_name)
 aws s3api list-object-versions \
-  --bucket nakoba-frontend-prod \
+  --bucket ${FRONTEND_BUCKET} \
   --prefix index.html \
   --query 'Versions[?IsLatest==`false`].[VersionId,LastModified]' \
   --output table
@@ -133,12 +125,12 @@ aws s3api list-object-versions \
 # Copy the previous version
 PREV_VERSION_ID=[version id from above]
 aws s3api copy-object \
-  --copy-source "nakoba-frontend-prod/index.html?versionId=${PREV_VERSION_ID}" \
-  --bucket nakoba-frontend-prod \
+  --copy-source "${FRONTEND_BUCKET}/index.html?versionId=${PREV_VERSION_ID}" \
+  --bucket ${FRONTEND_BUCKET} \
   --key index.html
 
 # Invalidate CloudFront cache
-DIST_ID=$(terraform output -raw cloudfront_distribution_id -chdir=terraform)
+DIST_ID=$(terraform -chdir=terraform output -raw cloudfront_distribution_id)
 aws cloudfront create-invalidation \
   --distribution-id ${DIST_ID} \
   --paths "/index.html"

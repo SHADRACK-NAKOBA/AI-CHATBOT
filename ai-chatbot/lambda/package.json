@@ -1,12 +1,13 @@
 {
   "name": "nakoba-ai-chatbot-lambda",
   "version": "2.0.0",
-  "description": "Enterprise AI Chatbot Lambda — Nakoba Production",
+  "description": "Enterprise AI Chatbot Lambda \u2014 Nakoba Production",
   "main": "index.js",
   "scripts": {
-    "test": "node test.js",
+    "test": "node --test tests/middleware.test.js tests/handler.test.js",
     "package": "npm install --production && zip -r ../lambda.zip . -x '*.zip' -x 'test.js' -x '*.test.js'",
-    "audit": "npm audit --audit-level=high"
+    "audit": "npm audit --audit-level=high",
+    "test:live": "node test.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.27.0",

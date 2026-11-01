@@ -434,8 +434,9 @@
 
     <script>
       // ── CONFIG ──────────────────────────────────────────────────────────────
-      // Injected by CI/CD pipeline — do not hardcode API Gateway URLs here
-      const API_URL = "YOUR_API_GATEWAY_URL/chat";
+      // Same-origin path: CloudFront routes /chat to API Gateway, so every request passes the WAF.
+      // No URL injection needed, no CORS issues. (Calling the execute-api URL directly would bypass the WAF.)
+      const API_URL = "/chat";
       const MAX_HISTORY = 20;
       const MAX_RETRIES = 2;
       // ────────────────────────────────────────────────────────────────────────

@@ -1,4 +1,5 @@
 #!/bin/bash
+# LEGACY — do not use for the lab. Use ./scripts/deploy.sh and ./scripts/destroy.sh (Terraform) instead.
 # teardown.sh — Remove all AWS resources
 # Usage: ./infrastructure/teardown.sh
 

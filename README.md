@@ -7,6 +7,25 @@ A secure, governed, and responsible AI chatbot platform built on AWS serverless 
 
 ---
 
+## 🎓 Prince Hands-On Lab — Build this yourself
+
+| # | Step | Time |
+|---|---|---|
+| 00 | [Project overview and architecture](docs/00-overview.md) | 10 min |
+| 01 | [Prerequisites: AWS, Anthropic, GitHub accounts and tools](docs/01-prerequisites.md) | 30 min |
+| 02 | [Clone the repo and set your email](docs/02-clone-and-configure.md) | 5 min |
+| 03 | [Bootstrap: AWS login, state bucket, API key](docs/03-bootstrap.md) | 10 min |
+| 04 | [Deploy with Terraform](docs/04-deploy.md) | 20 min |
+| 05 | [Test: browser, curl, PII, guardrails, WAF, rate limit](docs/05-test.md) | 20 min |
+| 06 | [Monitoring: logs, Logs Insights, alarms](docs/06-monitoring.md) | 15 min |
+| 07 | [CI/CD with GitHub Actions (optional)](docs/07-ci-cd.md) | 30 min |
+| 08 | [Make a change and roll back](docs/08-update-and-rollback.md) | 15 min |
+| 09 | [**Clean up** ⚠️](docs/09-cleanup.md) | 15 min |
+| 10 | [Troubleshooting](docs/10-troubleshooting.md) | — |
+| 11 | [Share your work](docs/11-share-your-work.md) | — |
+
+**Cost:** cents if you destroy the stack the same day (see [docs/00-overview.md](docs/00-overview.md#time-and-cost)).
+
 ## Architecture
 
 ```
@@ -41,11 +60,14 @@ Full architecture diagram: [Nakoba PROD/01_ARCHITECTURE.md](Nakoba%20PROD/01_ARC
 │   ├── dynamodb.tf               # Rate limit table
 │   ├── s3.tf                     # Frontend hosting (private, OAC)
 │   ├── iam.tf                    # Least-privilege IAM roles
-│   ├── cloudwatch.tf             # Alarms, dashboards, budgets
+│   ├── cloudwatch.tf             # Alarms, SNS alerts, budgets
 │   └── environments/             # Per-environment variable files
 │       ├── dev.tfvars
 │       ├── staging.tfvars
 │       └── prod.tfvars
+│
+├── scripts/                      # Student lab scripts (bootstrap, deploy, smoke-test, destroy)
+├── docs/                         # Click-by-click student lab guide
 │
 ├── .github/workflows/            # CI/CD pipelines
 │   ├── ci.yml                    # Tests + security scanning (every push)
@@ -69,37 +91,21 @@ Full architecture diagram: [Nakoba PROD/01_ARCHITECTURE.md](Nakoba%20PROD/01_ARC
 
 ## Quick Start
 
-### Prerequisites
-- AWS CLI configured (`aws configure`)
-- Terraform >= 1.5
-- Node.js >= 20
+> **Students:** follow the click-by-click lab in [`docs/`](docs/00-overview.md). The four commands below are the short version.
 
-### 1. Store the Anthropic API Key
+**Prerequisites:** AWS account + IAM user access keys, Anthropic API key with credits, Git (Git Bash on Windows), AWS CLI v2, Terraform ≥ 1.5, Node.js ≥ 22. See [docs/01-prerequisites.md](docs/01-prerequisites.md).
+
 ```bash
-aws secretsmanager create-secret \
-  --name "nakoba/anthropic-api-key" \
-  --secret-string '{"api_key":"sk-ant-YOUR_KEY"}'
+git clone https://github.com/SHADRACK-NAKOBA/AI-CHATBOT.git && cd AI-CHATBOT
+# 1. Put YOUR email in terraform/environments/dev.tfvars (owner_email)
+aws configure                      # 2. log in to AWS (region us-east-1)
+./scripts/bootstrap.sh             # 3. state bucket + lock table + Anthropic key secret (once)
+./scripts/deploy.sh dev            # 4. build Lambda + terraform apply (10-20 min)
+./scripts/smoke-test.sh dev        #    6 automatic checks through CloudFront
+./scripts/destroy.sh dev           #    delete everything when done (add --all to remove bootstrap too)
 ```
 
-### 2. Set up Terraform backend (once)
-See [Nakoba PROD/03_INFRASTRUCTURE_SETUP.md](Nakoba%20PROD/03_INFRASTRUCTURE_SETUP.md) — Step 2.
-
-### 3. Deploy
-```bash
-cd terraform
-terraform init -backend-config="..." 
-terraform apply -var-file="environments/dev.tfvars"
-```
-
-### 4. Open the app
-```bash
-terraform output cloudfront_domain
-# Open the URL in your browser
-```
-
-Full deployment guide: [Nakoba PROD/09_DEPLOYMENT_RUNBOOK.md](Nakoba%20PROD/09_DEPLOYMENT_RUNBOOK.md)
-
----
+Full production runbook: [Nakoba PROD/09_DEPLOYMENT_RUNBOOK.md](Nakoba%20PROD/09_DEPLOYMENT_RUNBOOK.md)
 
 ## Security Highlights
 
@@ -135,9 +141,9 @@ Policy: [Nakoba PROD/05_RESPONSIBLE_AI.md](Nakoba%20PROD/05_RESPONSIBLE_AI.md)
 
 | Pipeline | Trigger | What it does |
 |---------|---------|-------------|
-| CI | Every push | npm audit, unit tests, Snyk, Checkov, tf validate |
-| CD Staging | Merge to main | Deploy to staging, smoke tests |
-| CD Production | Manual approval | Deploy to prod, tag release |
+| CI | Every push | npm audit, 15 offline unit tests, Snyk (if token set), Checkov, tf validate |
+| CD Staging | Merge to main (when repo variable `ENABLE_CD=true`) | Deploy to staging, smoke tests |
+| CD Production | Manual + approval (when `ENABLE_CD=true`) | Deploy to prod, tag release |
 
 ---
 
@@ -149,9 +155,23 @@ Policy: [Nakoba PROD/05_RESPONSIBLE_AI.md](Nakoba%20PROD/05_RESPONSIBLE_AI.md)
 | CDN | AWS CloudFront |
 | Security | AWS WAF v2 |
 | API | AWS API Gateway HTTP |
-| Compute | AWS Lambda (Node.js 20.x) |
-| AI Model | Anthropic Claude Sonnet 4 |
+| Compute | AWS Lambda (Node.js 24.x) |
+| AI Model | Anthropic Claude Sonnet 5.5 (`claude-sonnet-5-5`, configurable via `anthropic_model`) |
 | Secrets | AWS Secrets Manager |
 | Rate Limiting | DynamoDB (TTL-based) |
 | IaC | Terraform |
 | CI/CD | GitHub Actions |
+
+## Changelog — v2.1 (lab-ready)
+- Model updated to `claude-sonnet-5-5` and made configurable (`claude-sonnet-4-20250514` was retired on 15 June 2026).
+- Lambda runtime `nodejs20.x` → `nodejs24.x` (Node 20 is deprecated on Lambda).
+- PII is now redacted in conversation **history** too, not only the latest message.
+- Frontend calls `/chat` on the CloudFront domain, so all API traffic passes through the WAF.
+- `terraform apply` uploads the frontend; `terraform destroy` works in dev/staging (versioned buckets emptied).
+- CloudFront logging fixed (S3 ownership controls); origin request policy added for API Gateway.
+- Reserved concurrency defaults to unreserved (new AWS accounts allow only 10).
+- `owner_email` is required per environment instead of defaulting to one person's inbox.
+- Checkov passes (skip comments moved inside resources); CI unit tests run offline; CD is opt-in via `ENABLE_CD`.
+- Rate-limit salt precedence bug fixed; 15 offline unit tests added.
+- Added `scripts/` and the `docs/` student lab; fixed runbook commands (`terraform -chdir`, bucket names, rollback).
+
